@@ -1,0 +1,2057 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="theme-color" content="#0b0b0d" />
+  <title>Учёт рабочих часов (BYN)</title>
+
+  <!-- Excel export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha512-r22gChlJu6a4GJbH+meVQZlqIlxN8uK5VQhWlPKgkS0XbL4wz0FC1vQzAqXnUQk9lQmJd5k7+qPzKc5bOaHh6g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <style>
+    :root{
+      --bg:#0b0b0d;
+      --card:#111115;
+      --muted:#a7a7b3;
+      --text:#f1f1f5;
+      --line:rgba(255,255,255,.10);
+      --accent:rgba(255,255,255,.06);
+      --danger:#ef4444;
+      --secondary:#2a2a33;
+      --ok:#22c55e;
+      --radius:18px;
+      --radius2:22px;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 20% -10%, rgba(255,255,255,.08), transparent 60%),
+                  radial-gradient(900px 500px at 110% 10%, rgba(239,68,68,.10), transparent 60%),
+                  var(--bg);
+      color:var(--text);
+    }
+
+    a{color:inherit}
+    .container{max-width:1200px;margin:0 auto;padding:16px 16px 32px}
+    @media(min-width:900px){.container{padding:28px 24px 48px}}
+
+    header{
+      display:flex; flex-direction:column; gap:10px;
+      padding-top:6px;
+    }
+    .hrow{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px}
+    h1{margin:0;font-size:22px;font-weight:750;letter-spacing:-.02em}
+    @media(min-width:900px){h1{font-size:28px}}
+    .subtitle{margin:2px 0 0;color:var(--muted);font-size:13px}
+
+    .btn{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.04);
+      color:var(--text);
+      border-radius:14px;
+      padding:10px 12px;
+      font-size:13px;
+      font-weight:650;
+      cursor:pointer;
+      transition:transform .05s ease, background .2s ease, border-color .2s ease;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .btn:hover{background:rgba(255,255,255,.07)}
+    .btn:active{transform:scale(.98)}
+    .btn.primary{background:rgba(255,255,255,.12)}
+    .btn.primary:hover{background:rgba(255,255,255,.16)}
+    .btn.secondary{background:rgba(255,255,255,.06)}
+    .btn.secondary:hover{background:rgba(255,255,255,.10)}
+    .btn.danger{background:rgba(239,68,68,.14); border-color:rgba(239,68,68,.35)}
+    .btn.danger:hover{background:rgba(239,68,68,.20)}
+    .btn.ghost{background:transparent}
+    .btn:disabled{opacity:.55; cursor:not-allowed}
+
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.03);
+      padding:7px 10px;
+      border-radius:999px;
+      font-size:12px;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+
+    .grid{display:grid; gap:14px; margin-top:18px}
+    @media(min-width:980px){.grid{grid-template-columns:360px 1fr; gap:16px}}
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border:1px solid var(--line);
+      border-radius:var(--radius2);
+      box-shadow: var(--shadow);
+    }
+    .card .head{padding:14px 14px 10px; display:flex; align-items:center; justify-content:space-between; gap:12px}
+    .card .head h2{margin:0;font-size:15px;font-weight:760}
+    .card .body{padding:0 14px 14px}
+
+    .sep{height:1px;background:var(--line);margin:12px 0}
+
+    .list{display:grid;gap:10px}
+    .emp{
+      display:flex; gap:12px; align-items:flex-start;
+      padding:12px;
+      border-radius:var(--radius);
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.10);
+      cursor:pointer;
+      transition: background .2s ease, border-color .2s ease;
+    }
+    .emp:hover{background:rgba(255,255,255,.05)}
+    .emp.active{border-color:rgba(255,255,255,.26); background:rgba(255,255,255,.06)}
+
+    .avatar{
+      width:44px;height:44px;border-radius:999px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.06);
+      overflow:hidden;flex:0 0 auto;
+      display:flex;align-items:center;justify-content:center;
+      font-weight:800;font-size:13px;color:rgba(255,255,255,.75);
+    }
+    .avatar.square{border-radius:18px}
+    .avatar img{width:100%;height:100%;object-fit:cover}
+
+    .emp .meta{flex:1}
+    .emp .name{font-weight:750; line-height:1.2}
+    .emp .role{font-size:12px;color:var(--muted);margin-top:3px}
+    .emp .right{text-align:right; min-width:120px}
+    .emp .rate{font-weight:800}
+    .emp .monthpay{font-size:11px;color:var(--muted);margin-top:3px}
+
+    .actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+
+    .label{font-size:11px;color:var(--muted);margin-bottom:6px}
+    .input, .select, textarea{
+      width:100%;
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.18);
+      color:var(--text);
+      padding:10px 11px;
+      border-radius:14px;
+      outline:none;
+      font-size:13px;
+    }
+    textarea{min-height:92px; resize:vertical}
+    .row{display:grid; gap:10px}
+    @media(min-width:900px){.row.two{grid-template-columns:1fr 1fr}}
+    @media(min-width:900px){.row.three{grid-template-columns:1fr 1fr 1fr}}
+
+    .badges{display:flex;gap:8px;flex-wrap:wrap}
+    .badge{font-size:11px;font-weight:750; padding:6px 9px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.03)}
+    .badge.secondary{background:rgba(255,255,255,.06)}
+    .badge.danger{background:rgba(239,68,68,.18); border-color:rgba(239,68,68,.35)}
+
+    /* Tabs */
+    .tabs{display:flex; gap:8px; background:rgba(0,0,0,.12); border:1px solid var(--line); padding:6px; border-radius:16px}
+    .tab{flex:1; text-align:center; padding:9px 10px; border-radius:12px; border:1px solid transparent; color:var(--muted); cursor:pointer; font-weight:750; font-size:13px}
+    .tab.active{color:var(--text); background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.12)}
+
+    /* Calendar */
+    .calendar{margin-top:12px}
+    .weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:8px}
+    .weekday{font-size:12px;color:var(--muted);padding:0 4px}
+    .days{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+    .day{
+      min-height:92px;
+      border-radius:18px;
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.12);
+      padding:10px;
+      cursor:pointer;
+      position:relative;
+      transition: background .2s ease, border-color .2s ease;
+    }
+    .day:hover{background:rgba(255,255,255,.04)}
+    .day.muted{opacity:.40}
+    .day.today{outline:1px solid rgba(255,255,255,.25)}
+    .day .top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+    .day .num{font-weight:800}
+    .day .kpi{margin-top:8px;font-size:12px;color:var(--muted);display:grid;gap:4px}
+    .dot{position:absolute;bottom:10px;right:10px;width:8px;height:8px;border-radius:999px;background:rgba(255,255,255,.65)}
+
+    /* Table mode */
+    .tableWrap{margin-top:12px;border:1px solid var(--line);border-radius:18px;overflow:hidden}
+    .scrollX{overflow-x:auto}
+    table{border-collapse:collapse; width:100%; font-size:13px}
+    th, td{border-bottom:1px solid var(--line); padding:10px; vertical-align:top}
+    th{position:sticky;top:0;background:rgba(11,11,13,.95); z-index:2; text-align:left}
+    .thDay button{width:100%; text-align:left; background:transparent; border:none; color:inherit; cursor:pointer; padding:0}
+    .thDay .thRow{display:flex; align-items:center; justify-content:space-between; gap:8px}
+    .thDay .mini{font-size:11px;color:var(--muted)}
+    .cellControls{display:grid; gap:8px; min-width:120px}
+    .small{font-size:11px;color:var(--muted)}
+
+    /* Modal */
+    .modalOverlay{
+      position:fixed; inset:0; background:rgba(0,0,0,.55);
+      display:none; align-items:center; justify-content:center;
+      padding:18px;
+      z-index:1000;
+    }
+    .modalOverlay.open{display:flex}
+    .modal{
+      width:min(760px, 100%);
+      max-height: 88vh;
+      overflow:auto;
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+      border:1px solid var(--line);
+      border-radius:22px;
+      box-shadow: var(--shadow);
+    }
+    .modal .mhead{padding:14px 14px 10px}
+    .modal .mhead h3{margin:0; font-size:16px; font-weight:850}
+    .modal .mhead p{margin:6px 0 0; font-size:12px;color:var(--muted)}
+    .modal .mbody{padding:0 14px 14px}
+    .modal .mfoot{padding:12px 14px 14px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap}
+
+    .profileTop{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap}
+    .kbd{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:11px; padding:2px 6px; border:1px solid var(--line); border-radius:8px; background:rgba(0,0,0,.15); color:rgba(255,255,255,.78)}
+
+    .notice{font-size:12px;color:var(--muted);margin-top:12px}
+    .hidden{display:none !important}
+
+    /* iPhone safe area */
+    .safeBottom{padding-bottom: max(16px, env(safe-area-inset-bottom));}
+
+    /* Reduce shadow on small */
+    @media(max-width:520px){
+      .card{box-shadow:none}
+      .modal{box-shadow:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="container safeBottom">
+
+    <!-- MAIN PAGE -->
+    <div id="pageMain">
+      <header>
+        <div class="hrow">
+          <div>
+            <h1>Учёт рабочих часов</h1>
+            <div class="subtitle">Сотрудники → ставка → календарь/таблица → часы → автоматический расчёт (BYN).</div>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end">
+            <button class="btn secondary" id="btnPrevMonth">← Пред. месяц</button>
+            <button class="btn secondary" id="btnToday">Сегодня</button>
+            <button class="btn secondary" id="btnNextMonth">След. месяц →</button>
+            <button class="btn primary" id="btnAddEmployee">+ Добавить сотрудника</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="grid">
+        <!-- Left panel -->
+        <div style="display:grid; gap:14px">
+          <div class="card">
+            <div class="head"><h2>Сотрудники</h2></div>
+            <div class="body">
+              <div class="list" id="employeesList"></div>
+              <div class="sep"></div>
+              <div id="employeeCard"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="head"><h2>Настройки ставок</h2></div>
+            <div class="body">
+              <div class="row three">
+                <div>
+                  <div class="label">Обычный (x)</div>
+                  <input class="input" type="number" step="0.1" min="0" id="multRegular" />
+                </div>
+                <div>
+                  <div class="label">Выходной (x)</div>
+                  <input class="input" type="number" step="0.1" min="0" id="multWeekend" />
+                </div>
+                <div>
+                  <div class="label">Праздник (x)</div>
+                  <input class="input" type="number" step="0.1" min="0" id="multHoliday" />
+                </div>
+              </div>
+              <div class="notice">Множитель применяется к ставке за час. Например, в праздник x2.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right panel -->
+        <div style="display:grid; gap:14px">
+          <div class="card">
+            <div class="head">
+              <div>
+                <h2 id="monthTitle">—</h2>
+                <div class="subtitle" style="margin-top:4px">
+                  Выбранный сотрудник: <span id="selectedEmpName" style="font-weight:800;color:var(--text)">—</span>
+                </div>
+              </div>
+              <div class="badges">
+                <span class="badge">Обычный</span>
+                <span class="badge secondary">Выходной</span>
+                <span class="badge danger">Праздник</span>
+              </div>
+            </div>
+            <div class="body">
+              <div class="tabs" role="tablist">
+                <div class="tab active" id="tabCalendar" role="tab">Календарь</div>
+                <div class="tab" id="tabTable" role="tab">Таблица ввода</div>
+              </div>
+
+              <div id="viewCalendar" class="calendar"></div>
+              <div id="viewTable" class="hidden"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="head">
+              <h2>Сводка и расчёт оплаты</h2>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+                <button class="btn secondary" id="btnExportMonth">Экспорт месяца (Excel)</button>
+                <button class="btn secondary" id="btnExportRange">Экспорт периода (Excel)</button>
+              </div>
+            </div>
+            <div class="body">
+              <div class="tabs" role="tablist" style="margin-bottom:10px">
+                <div class="tab active" id="tabSumMonth">За месяц</div>
+                <div class="tab" id="tabSumRange">За период</div>
+              </div>
+
+              <div id="sumMonth"></div>
+
+              <div id="sumRange" class="hidden">
+                <div class="row three" style="align-items:end">
+                  <div>
+                    <div class="label">С даты</div>
+                    <input class="input" type="date" id="rangeFrom" />
+                  </div>
+                  <div>
+                    <div class="label">По дату</div>
+                    <input class="input" type="date" id="rangeTo" />
+                  </div>
+                  <div>
+                    <button class="btn secondary" id="btnRangeToMonth" style="width:100%">= Текущий месяц</button>
+                  </div>
+                </div>
+                <div style="margin-top:12px" id="rangeSummaryBlock"></div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="notice">Данные хранятся локально (localStorage). Фото тоже — большие фото могут раздувать хранилище.</div>
+    </div>
+
+    <!-- PROFILE PAGE -->
+    <div id="pageProfile" class="hidden">
+      <header>
+        <div class="hrow">
+          <div style="display:flex; align-items:end; gap:10px; flex-wrap:wrap">
+            <button class="btn secondary" id="btnBack">← Назад</button>
+            <div>
+              <h1>Профиль сотрудника</h1>
+              <div class="subtitle">История по месяцам + фильтры + детализация.</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end">
+            <button class="btn secondary" id="btnEditFromProfile">Редактировать</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="grid">
+        <div style="display:grid; gap:14px">
+          <div class="card">
+            <div class="head"><h2>Карточка</h2></div>
+            <div class="body" id="profileCard"></div>
+          </div>
+
+          <div class="card">
+            <div class="head"><h2>История по месяцам</h2></div>
+            <div class="body" id="profileHistory"></div>
+          </div>
+        </div>
+
+        <div style="display:grid; gap:14px">
+          <div class="card">
+            <div class="head">
+              <h2>Фильтры</h2>
+              <div class="badges">
+                <span class="badge">Обычный</span>
+                <span class="badge secondary">Выходной</span>
+                <span class="badge danger">Праздник</span>
+              </div>
+            </div>
+            <div class="body" id="profileFilters"></div>
+          </div>
+
+          <div class="card">
+            <div class="head"><h2>Детализация</h2></div>
+            <div class="body" id="profileDetails"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="notice">Совет: клик по месяцу в «Истории» применяет фильтр на этот месяц.</div>
+    </div>
+
+  </div>
+
+  <!-- EMPLOYEE MODAL -->
+  <div class="modalOverlay" id="modalEmployee">
+    <div class="modal">
+      <div class="mhead">
+        <h3 id="empModalTitle">—</h3>
+        <p>Фото и личные данные хранятся локально в браузере — без отправки на сервер.</p>
+      </div>
+      <div class="mbody">
+        <div class="row" style="grid-template-columns:220px 1fr; gap:14px">
+          <div>
+            <div class="label">Фото</div>
+            <div style="display:flex; gap:12px; align-items:center">
+              <div class="avatar square" id="empPhotoPreview" style="width:96px;height:96px"></div>
+              <div style="display:grid; gap:8px; flex:1">
+                <input class="input" id="empPhotoFile" type="file" accept="image/*" />
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <button class="btn secondary" id="btnPickPhoto" type="button">Выбрать</button>
+                  <button class="btn danger" id="btnRemovePhoto" type="button">Удалить</button>
+                </div>
+                <div class="small">Совет: фото до ~2.5MB.</div>
+              </div>
+            </div>
+          </div>
+          <div style="display:grid; gap:10px">
+            <div class="row two">
+              <div>
+                <div class="label">Имя</div>
+                <input class="input" id="empName" placeholder="Например: Сварщик Иван" />
+              </div>
+              <div>
+                <div class="label">Должность</div>
+                <input class="input" id="empRole" placeholder="Сварщик / Слесарь" />
+              </div>
+            </div>
+            <div class="row two">
+              <div>
+                <div class="label">Ставка (BYN/час)</div>
+                <input class="input" id="empRate" type="number" min="0" step="0.5" />
+              </div>
+              <div>
+                <div class="label">Телефон</div>
+                <input class="input" id="empPhone" placeholder="+375 ..." />
+              </div>
+            </div>
+            <div class="row two">
+              <div>
+                <div class="label">Email</div>
+                <input class="input" id="empEmail" placeholder="name@example.com" />
+              </div>
+              <div>
+                <div class="label">Адрес</div>
+                <input class="input" id="empAddress" placeholder="Город, улица, дом" />
+              </div>
+            </div>
+            <div>
+              <div class="label">Заметки</div>
+              <textarea id="empNotes" placeholder="Например: медосмотр до 01.02, допуски, размер спецодежды..."></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mfoot">
+        <button class="btn secondary" id="btnEmpCancel">Отмена</button>
+        <button class="btn primary" id="btnEmpSave">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY MODAL -->
+  <div class="modalOverlay" id="modalDay">
+    <div class="modal" style="width:min(640px,100%)">
+      <div class="mhead">
+        <h3 id="dayModalTitle">—</h3>
+        <p>Сначала задайте тип дня (для всех), затем — часы для выбранного сотрудника.</p>
+      </div>
+      <div class="mbody" style="display:grid; gap:12px">
+
+        <div style="border:1px solid var(--line); border-radius:18px; padding:12px; background:rgba(0,0,0,.10)">
+          <div class="profileTop">
+            <div>
+              <div style="font-weight:800">Тип дня (общий)</div>
+              <div class="small">Влияет на ставку, если в этот день кто-то работал.</div>
+            </div>
+            <span class="badge" id="dayGlobalBadge">—</span>
+          </div>
+          <div style="margin-top:10px">
+            <select class="select" id="dayGlobalSelect">
+              <option value="regular">Обычный</option>
+              <option value="weekend">Выходной</option>
+              <option value="holiday">Праздник</option>
+            </select>
+            <div class="small" style="margin-top:8px">
+              Если выбрать тип, совпадающий с дефолтом (например, суббота/воскресенье), override не хранится.
+            </div>
+          </div>
+        </div>
+
+        <div style="border:1px solid var(--line); border-radius:18px; padding:12px; background:rgba(0,0,0,.10)">
+          <div style="font-weight:800">Запись часов</div>
+          <div class="small">Сотрудник: <span id="dayEmpName" style="color:var(--text);font-weight:800">—</span></div>
+
+          <div class="row two" style="margin-top:10px">
+            <div>
+              <div class="label">Часы</div>
+              <input class="input" id="dayHours" type="number" min="0" max="24" step="0.5" />
+              <div class="small" style="margin-top:6px">0 часов = удалить запись</div>
+            </div>
+            <div>
+              <div class="label">Тип для этой записи</div>
+              <select class="select" id="dayEntrySelect">
+                <option value="regular">Обычный</option>
+                <option value="weekend">Выходной</option>
+                <option value="holiday">Праздник</option>
+              </select>
+              <div class="small" style="margin-top:6px">По умолчанию = общий тип дня. Можно переопределить.</div>
+            </div>
+          </div>
+
+          <div class="sep"></div>
+          <div style="border-radius:18px; padding:12px; background:rgba(255,255,255,.05)">
+            <div style="font-weight:800">Предпросмотр оплаты</div>
+            <div class="row three" style="margin-top:8px">
+              <div class="small">Ставка: <span id="prevRate" style="color:var(--text);font-weight:800">—</span></div>
+              <div class="small">Множитель: <span id="prevMult" style="color:var(--text);font-weight:800">—</span></div>
+              <div class="small">Итого: <span id="prevPay" style="color:var(--text);font-weight:900">—</span></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div class="mfoot">
+        <button class="btn secondary" id="btnDayCancel">Отмена</button>
+        <button class="btn primary" id="btnDaySave">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // ----------------------------
+  // Data model + helpers
+  // ----------------------------
+  const LS_KEY = "hours-payroll.simple.v1";
+
+  function pad2(n){ return String(n).padStart(2,"0"); }
+  function toISO(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+  function parseISODate(iso){ return new Date(`${iso}T00:00:00`); }
+  function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+  function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
+  function addMonths(d, n){ return new Date(d.getFullYear(), d.getMonth()+n, 1); }
+  function isSameMonth(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth(); }
+  function isToday(d){ const t=new Date(); return d.getFullYear()===t.getFullYear() && d.getMonth()===t.getMonth() && d.getDate()===t.getDate(); }
+  function clampNum(v, min=0, max=1e9){ const n = Number(v); if(!Number.isFinite(n)) return min; return Math.min(max, Math.max(min,n)); }
+  function round1(n){ return Math.round(clampNum(n,0,1e18)*10)/10; }
+  function round2(n){ return Math.round(clampNum(n,0,1e18)*100)/100; }
+
+  function money(n){
+    const x = Number.isFinite(n) ? n : 0;
+    return new Intl.NumberFormat("ru-BY", { style:"currency", currency:"BYN", minimumFractionDigits:2, maximumFractionDigits:2 }).format(x);
+  }
+
+  function initials(name){
+    const s=(name||"").trim();
+    if(!s) return "?";
+    const parts=s.split(/\s+/).filter(Boolean);
+    const a=(parts[0]?.[0]||"?");
+    const b=(parts.length>1 ? (parts[1]?.[0]||"") : (parts[0]?.[1]||""));
+    return (a+b).toUpperCase();
+  }
+
+  function typeLabel(t){ return t==="holiday"?"Праздник":t==="weekend"?"Выходной":"Обычный"; }
+  function typeShort(t){ return t==="holiday"?"П":t==="weekend"?"В":"О"; }
+  function typeBadgeClass(t){ return t==="holiday"?"badge danger":t==="weekend"?"badge secondary":"badge"; }
+  function nextType(t){ return t==="regular"?"weekend":t==="weekend"?"holiday":"regular"; }
+
+  function defaultDayType(d){
+    const day=d.getDay(); // 0..6
+    const isWeekend=(day===0||day===6);
+    return isWeekend?"weekend":"regular";
+  }
+
+  function computePay(hours, rate, type, mult){
+    const h=clampNum(hours,0,24);
+    const r=clampNum(rate,0,1e9);
+    const m=clampNum(mult?.[type] ?? 1, 0, 100);
+    return h*r*m;
+  }
+
+  function uid(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); }
+
+  function emptyState(){
+    return {
+      employees:[
+        {id:uid(), name:"Сварщик 1", role:"Сварщик", rate:35, photoDataUrl:"", phone:"", email:"", address:"", notes:""},
+        {id:uid(), name:"Сварщик 2", role:"Сварщик", rate:35, photoDataUrl:"", phone:"", email:"", address:"", notes:""},
+        {id:uid(), name:"Слесарь 1", role:"Слесарь", rate:28, photoDataUrl:"", phone:"", email:"", address:"", notes:""},
+      ],
+      entries:{},
+      dayOverrides:{},
+      multipliers:{ regular:1, weekend:1.5, holiday:2 },
+    };
+  }
+
+  function loadStore(){
+    try{
+      const raw=localStorage.getItem(LS_KEY);
+      if(!raw) return emptyState();
+      const parsed=JSON.parse(raw);
+      const base=emptyState();
+      return { ...base, ...parsed };
+    }catch{ return emptyState(); }
+  }
+
+  function saveStore(){
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(store)); }catch{}
+  }
+
+  let store = loadStore();
+  let selectedEmployeeId = store.employees?.[0]?.id ?? null;
+  let monthCursor = startOfMonth(new Date());
+  let viewMode = "calendar"; // calendar | table
+
+  // Profile navigation
+  let page = "main";
+  let profileEmployeeId = null;
+
+  // Day modal state
+  let dayCursor = new Date();
+
+  // Range summary
+  let rangeFrom = toISO(startOfMonth(new Date()));
+  let rangeTo = toISO(endOfMonth(new Date()));
+
+  function getEmployee(id){ return store.employees.find(e=>e.id===id) || null; }
+  function selectedEmployee(){ return getEmployee(selectedEmployeeId); }
+
+  function dayTypeForISO(iso){
+    const ov = store.dayOverrides?.[iso];
+    if(ov) return ov;
+    return defaultDayType(parseISODate(iso));
+  }
+
+  function getEntry(empId, iso){
+    return store.entries?.[empId]?.[iso] ?? null;
+  }
+
+  function upsertEntry(empId, iso, payload){
+    store.entries ||= {};
+    store.entries[empId] ||= {};
+
+    if(!payload || clampNum(payload.hours,0,24) <= 0){
+      delete store.entries[empId][iso];
+      if(Object.keys(store.entries[empId]).length===0) delete store.entries[empId];
+    } else {
+      store.entries[empId][iso] = { hours: clampNum(payload.hours,0,24), type: payload.type };
+    }
+    saveStore();
+  }
+
+  function setDayOverride(iso, type){
+    store.dayOverrides ||= {};
+    const def = defaultDayType(parseISODate(iso));
+    if(!type || type===def){
+      delete store.dayOverrides[iso];
+    }else{
+      store.dayOverrides[iso]=type;
+    }
+    saveStore();
+  }
+
+  function monthLabel(d){
+    const fmt = new Intl.DateTimeFormat('ru-BY', { month:'long', year:'numeric' });
+    const s = fmt.format(d);
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  function startOfWeekMonday(d){
+    const x=new Date(d);
+    const day=x.getDay(); // 0..6
+    const diff = (day===0? -6 : 1-day);
+    x.setDate(x.getDate()+diff);
+    x.setHours(0,0,0,0);
+    return x;
+  }
+  function endOfWeekMonday(d){
+    const s=startOfWeekMonday(d);
+    const e=new Date(s);
+    e.setDate(e.getDate()+6);
+    return e;
+  }
+
+  function computeSummaryForPeriod(fromISO, toISO){
+    const a = safeISO(fromISO);
+    const b = safeISO(toISO);
+    if(!a || !b) return { rows:[], totalHours:0, totalPay:0, byType: {regular:{hours:0,pay:0}, weekend:{hours:0,pay:0}, holiday:{hours:0,pay:0}} };
+
+    const A=parseISODate(a);
+    const B=parseISODate(b);
+    const start = A<=B?A:B;
+    const end = A<=B?B:A;
+
+    const byType = { regular:{hours:0,pay:0}, weekend:{hours:0,pay:0}, holiday:{hours:0,pay:0} };
+
+    const rows = store.employees.map(emp=>{
+      const map = store.entries?.[emp.id] ?? {};
+      let hoursTotal=0, payTotal=0;
+      for(const iso of Object.keys(map)){
+        const d=parseISODate(iso);
+        if(d<start||d>end) continue;
+        const item=map[iso];
+        const hours=clampNum(item?.hours??0,0,24);
+        if(hours<=0) continue;
+        const globalType = dayTypeForISO(iso);
+        const type = item?.type ?? globalType;
+        const pay = computePay(hours, emp.rate, type, store.multipliers);
+        hoursTotal += hours;
+        payTotal += pay;
+        byType[type].hours += hours;
+        byType[type].pay += pay;
+      }
+      return { employee: emp, hoursTotal: round1(hoursTotal), payTotal: round2(payTotal) };
+    }).sort((x,y)=>y.payTotal-x.payTotal);
+
+    return {
+      rows,
+      totalHours: round1(rows.reduce((s,r)=>s+r.hoursTotal,0)),
+      totalPay: round2(rows.reduce((s,r)=>s+r.payTotal,0)),
+      byType: {
+        regular:{ hours: round1(byType.regular.hours), pay: round2(byType.regular.pay) },
+        weekend:{ hours: round1(byType.weekend.hours), pay: round2(byType.weekend.pay) },
+        holiday:{ hours: round1(byType.holiday.hours), pay: round2(byType.holiday.pay) },
+      }
+    };
+  }
+
+  function safeISO(x){
+    if(!x || typeof x !== 'string') return null;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(x)) return null;
+    return x;
+  }
+
+  // ----------------------------
+  // DOM references
+  // ----------------------------
+  const el = (id)=>document.getElementById(id);
+
+  const pageMain = el('pageMain');
+  const pageProfile = el('pageProfile');
+
+  const employeesList = el('employeesList');
+  const employeeCard = el('employeeCard');
+
+  const monthTitle = el('monthTitle');
+  const selectedEmpName = el('selectedEmpName');
+
+  const tabCalendar = el('tabCalendar');
+  const tabTable = el('tabTable');
+  const viewCalendar = el('viewCalendar');
+  const viewTable = el('viewTable');
+
+  const multRegular = el('multRegular');
+  const multWeekend = el('multWeekend');
+  const multHoliday = el('multHoliday');
+
+  const tabSumMonth = el('tabSumMonth');
+  const tabSumRange = el('tabSumRange');
+  const sumMonth = el('sumMonth');
+  const sumRange = el('sumRange');
+  const rangeFromEl = el('rangeFrom');
+  const rangeToEl = el('rangeTo');
+  const rangeSummaryBlock = el('rangeSummaryBlock');
+
+  // Modals
+  const modalEmployee = el('modalEmployee');
+  const modalDay = el('modalDay');
+
+  // Employee modal inputs
+  const empModalTitle = el('empModalTitle');
+  const empPhotoPreview = el('empPhotoPreview');
+  const empPhotoFile = el('empPhotoFile');
+  const empName = el('empName');
+  const empRole = el('empRole');
+  const empRate = el('empRate');
+  const empPhone = el('empPhone');
+  const empEmail = el('empEmail');
+  const empAddress = el('empAddress');
+  const empNotes = el('empNotes');
+
+  // Day modal inputs
+  const dayModalTitle = el('dayModalTitle');
+  const dayGlobalBadge = el('dayGlobalBadge');
+  const dayGlobalSelect = el('dayGlobalSelect');
+  const dayEmpName = el('dayEmpName');
+  const dayHoursEl = el('dayHours');
+  const dayEntrySelect = el('dayEntrySelect');
+  const prevRate = el('prevRate');
+  const prevMult = el('prevMult');
+  const prevPay = el('prevPay');
+
+  // Profile DOM
+  const btnBack = el('btnBack');
+  const btnEditFromProfile = el('btnEditFromProfile');
+  const profileCard = el('profileCard');
+  const profileHistory = el('profileHistory');
+  const profileFilters = el('profileFilters');
+  const profileDetails = el('profileDetails');
+
+  // ----------------------------
+  // Modal helpers
+  // ----------------------------
+  function openModal(m){ m.classList.add('open'); }
+  function closeModal(m){ m.classList.remove('open'); }
+
+  // Close on overlay click
+  [modalEmployee, modalDay].forEach(m=>{
+    m.addEventListener('click', (e)=>{
+      if(e.target === m) closeModal(m);
+    });
+  });
+
+  // Esc to close
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape'){
+      closeModal(modalEmployee);
+      closeModal(modalDay);
+    }
+  });
+
+  // ----------------------------
+  // Render: Employees
+  // ----------------------------
+  function renderEmployees(){
+    employeesList.innerHTML = "";
+
+    if(!store.employees.length){
+      employeesList.innerHTML = `<div class="small">Пока нет сотрудников. Добавьте первого.</div>`;
+      employeeCard.innerHTML = `<div class="small">—</div>`;
+      selectedEmpName.textContent = "—";
+      return;
+    }
+
+    // ensure selected id
+    if(!store.employees.some(e=>e.id===selectedEmployeeId)){
+      selectedEmployeeId = store.employees[0].id;
+    }
+
+    const monthFrom = toISO(startOfMonth(monthCursor));
+    const monthTo = toISO(endOfMonth(monthCursor));
+    const monthSum = computeSummaryForPeriod(monthFrom, monthTo);
+
+    for(const emp of store.employees){
+      const active = emp.id===selectedEmployeeId;
+      const row = monthSum.rows.find(r=>r.employee.id===emp.id);
+      const pay = row?.payTotal ?? 0;
+
+      const card = document.createElement('div');
+      card.className = `emp ${active?"active":""}`;
+      card.addEventListener('click', ()=>{ selectedEmployeeId=emp.id; renderAll(); });
+
+      const avatar = renderAvatar(emp, false, 44);
+
+      card.appendChild(avatar);
+
+      const meta = document.createElement('div');
+      meta.className = "meta";
+      meta.innerHTML = `<div class="name">${escapeHtml(emp.name||'—')}</div><div class="role">${escapeHtml(emp.role||'—')}</div>`;
+
+      const right = document.createElement('div');
+      right.className = "right";
+      right.innerHTML = `<div class="rate">${money(emp.rate)}/ч</div>${active?`<div class="monthpay">За месяц: ${money(pay)}</div>`:""}`;
+
+      card.appendChild(meta);
+      card.appendChild(right);
+
+      const actions = document.createElement('div');
+      actions.className = "actions";
+
+      const btnEdit = mkBtn("Редактировать","secondary", ()=>openEditEmployee(emp));
+      const btnProfile = mkBtn("Профиль","secondary", ()=>goProfile(emp.id));
+      const btnDel = mkBtn("Удалить","danger", ()=>{ if(confirm('Удалить сотрудника и его записи?')){ deleteEmployee(emp.id); } });
+
+      actions.appendChild(btnEdit);
+      actions.appendChild(btnProfile);
+      actions.appendChild(btnDel);
+
+      meta.appendChild(actions);
+
+      employeesList.appendChild(card);
+    }
+
+    selectedEmpName.textContent = selectedEmployee()?.name ?? "—";
+    renderEmployeeCard();
+  }
+
+  function renderEmployeeCard(){
+    const emp = selectedEmployee();
+    if(!emp){
+      employeeCard.innerHTML = `<div class="small">Выберите сотрудника, чтобы увидеть карточку.</div>`;
+      return;
+    }
+
+    const wrap = document.createElement('div');
+    wrap.innerHTML = "";
+
+    const card = document.createElement('div');
+    card.style.border = "1px solid var(--line)";
+    card.style.borderRadius = "18px";
+    card.style.padding = "12px";
+    card.style.background = "rgba(0,0,0,.10)";
+
+    const top = document.createElement('div');
+    top.style.display = "flex";
+    top.style.gap = "12px";
+    top.style.alignItems = "flex-start";
+
+    const avatar = renderAvatar(emp, false, 64);
+    top.appendChild(avatar);
+
+    const meta = document.createElement('div');
+    meta.style.flex = "1";
+
+    const head = document.createElement('div');
+    head.style.display = "flex";
+    head.style.alignItems = "flex-start";
+    head.style.justifyContent = "space-between";
+    head.style.gap = "10px";
+
+    const left = document.createElement('div');
+    left.innerHTML = `<div style="font-weight:850;line-height:1.2">${escapeHtml(emp.name)}</div><div class="small">${escapeHtml(emp.role||'—')}</div>`;
+
+    const right = document.createElement('div');
+    right.style.display = "flex";
+    right.style.gap = "8px";
+    right.style.flexWrap = "wrap";
+    right.appendChild(mkBtn("Править","secondary", ()=>openEditEmployee(emp)));
+    right.appendChild(mkBtn("Профиль","secondary", ()=>goProfile(emp.id)));
+
+    head.appendChild(left);
+    head.appendChild(right);
+
+    const lines = document.createElement('div');
+    lines.style.marginTop = "10px";
+    lines.style.display = "grid";
+    lines.style.gap = "8px";
+
+    lines.appendChild(lineItem("Ставка", `${money(emp.rate)}/ч`));
+    lines.appendChild(lineItem("Телефон", emp.phone || "—"));
+    lines.appendChild(lineItem("Email", emp.email || "—"));
+    lines.appendChild(lineItem("Адрес", emp.address || "—"));
+
+    if(emp.notes){
+      const notes = document.createElement('div');
+      notes.style.borderRadius = "14px";
+      notes.style.background = "rgba(255,255,255,.05)";
+      notes.style.padding = "10px";
+      notes.innerHTML = `<div class="small">Заметки</div><div style="margin-top:6px; white-space:pre-wrap">${escapeHtml(emp.notes)}</div>`;
+      lines.appendChild(notes);
+    }
+
+    meta.appendChild(head);
+    meta.appendChild(lines);
+
+    top.appendChild(meta);
+    card.appendChild(top);
+
+    employeeCard.innerHTML = "";
+    employeeCard.appendChild(card);
+  }
+
+  function lineItem(label, value){
+    const d = document.createElement('div');
+    d.style.display = "flex";
+    d.style.alignItems = "center";
+    d.style.justifyContent = "space-between";
+    d.style.gap = "10px";
+    d.style.borderRadius = "14px";
+    d.style.padding = "10px";
+    d.style.background = "rgba(255,255,255,.05)";
+    d.innerHTML = `<div class="small">${escapeHtml(label)}</div><div style="font-weight:750;font-size:12px;text-align:right">${escapeHtml(String(value))}</div>`;
+    return d;
+  }
+
+  function renderAvatar(emp, square=false, size=44){
+    const av = document.createElement('div');
+    av.className = `avatar ${square?"square":""}`;
+    av.style.width = size+"px";
+    av.style.height = size+"px";
+
+    if(emp.photoDataUrl){
+      const img = document.createElement('img');
+      img.src = emp.photoDataUrl;
+      img.alt = emp.name || "";
+      av.appendChild(img);
+    }else{
+      av.textContent = initials(emp.name);
+    }
+    return av;
+  }
+
+  function mkBtn(text, variant, onClick){
+    const b = document.createElement('button');
+    b.className = `btn ${variant||""}`;
+    b.textContent = text;
+    b.type = "button";
+    b.addEventListener('click', (e)=>{ e.stopPropagation(); onClick?.(); });
+    return b;
+  }
+
+  function escapeHtml(s){
+    return String(s)
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;')
+      .replaceAll('"','&quot;')
+      .replaceAll("'",'&#039;');
+  }
+
+  // ----------------------------
+  // Employee CRUD modal
+  // ----------------------------
+  let empDraft = null; // {id?}
+
+  function openAddEmployee(){
+    empDraft = { id:null, name:"", role:"", rate:0, photoDataUrl:"", phone:"", email:"", address:"", notes:"" };
+    openEmployeeModal();
+  }
+
+  function openEditEmployee(emp){
+    empDraft = { ...emp };
+    openEmployeeModal();
+  }
+
+  function openEmployeeModal(){
+    empModalTitle.textContent = empDraft.id ? "Редактировать сотрудника" : "Добавить сотрудника";
+    setEmpPhotoPreview(empDraft);
+
+    empName.value = empDraft.name || "";
+    empRole.value = empDraft.role || "";
+    empRate.value = empDraft.rate ?? 0;
+    empPhone.value = empDraft.phone || "";
+    empEmail.value = empDraft.email || "";
+    empAddress.value = empDraft.address || "";
+    empNotes.value = empDraft.notes || "";
+
+    empPhotoFile.value = "";
+    openModal(modalEmployee);
+  }
+
+  function setEmpPhotoPreview(draft){
+    empPhotoPreview.innerHTML = "";
+    if(draft.photoDataUrl){
+      const img=document.createElement('img');
+      img.src=draft.photoDataUrl;
+      img.alt=draft.name||"";
+      empPhotoPreview.appendChild(img);
+    } else {
+      empPhotoPreview.textContent = initials(draft.name);
+    }
+  }
+
+  async function handlePhotoFile(file){
+    if(!file) return;
+    if(!file.type?.startsWith('image/')) return;
+    if(file.size > 2500000){
+      alert("Файл слишком большой. Выберите фото до ~2.5MB.");
+      return;
+    }
+    const dataUrl = await readFileAsDataURL(file);
+    empDraft.photoDataUrl = dataUrl;
+    setEmpPhotoPreview(empDraft);
+  }
+
+  function saveEmployee(){
+    const name = (empName.value||"").trim();
+    if(!name){ alert("Введите имя сотрудника"); return; }
+
+    const next = {
+      name,
+      role: (empRole.value||"").trim(),
+      rate: clampNum(empRate.value,0,1e9),
+      photoDataUrl: empDraft.photoDataUrl || "",
+      phone: (empPhone.value||"").trim(),
+      email: (empEmail.value||"").trim(),
+      address: (empAddress.value||"").trim(),
+      notes: (empNotes.value||"").trim(),
+    };
+
+    if(empDraft.id){
+      const idx = store.employees.findIndex(e=>e.id===empDraft.id);
+      if(idx>=0) store.employees[idx] = { ...store.employees[idx], ...next };
+    } else {
+      const id = uid();
+      store.employees.push({ id, ...next });
+      selectedEmployeeId = id;
+    }
+
+    saveStore();
+    closeModal(modalEmployee);
+    renderAll();
+  }
+
+  function deleteEmployee(empId){
+    store.employees = store.employees.filter(e=>e.id!==empId);
+    if(store.entries?.[empId]) delete store.entries[empId];
+    if(selectedEmployeeId===empId) selectedEmployeeId = store.employees?.[0]?.id ?? null;
+    saveStore();
+    renderAll();
+  }
+
+  function readFileAsDataURL(file){
+    return new Promise((resolve,reject)=>{
+      const r=new FileReader();
+      r.onload=()=>resolve(String(r.result||""));
+      r.onerror=reject;
+      r.readAsDataURL(file);
+    });
+  }
+
+  // ----------------------------
+  // Calendar render + Day modal
+  // ----------------------------
+  function renderCalendar(){
+    monthTitle.textContent = monthLabel(monthCursor);
+
+    const wrap = document.createElement('div');
+
+    const weekdays = document.createElement('div');
+    weekdays.className = "weekdays";
+    for(const w of ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"]){
+      const d=document.createElement('div');
+      d.className="weekday";
+      d.textContent=w;
+      weekdays.appendChild(d);
+    }
+
+    const days = document.createElement('div');
+    days.className = "days";
+
+    const start = startOfWeekMonday(startOfMonth(monthCursor));
+    const end = endOfWeekMonday(endOfMonth(monthCursor));
+
+    const emp = selectedEmployee();
+
+    for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+      const cell = document.createElement('div');
+      cell.className = "day";
+      if(!isSameMonth(d, monthCursor)) cell.classList.add('muted');
+      if(isToday(d)) cell.classList.add('today');
+
+      const iso = toISO(d);
+      const globalType = dayTypeForISO(iso);
+      const entry = selectedEmployeeId ? getEntry(selectedEmployeeId, iso) : null;
+      const typeForPay = entry?.type ?? globalType;
+
+      const pay = emp ? computePay(entry?.hours ?? 0, emp.rate, typeForPay, store.multipliers) : 0;
+
+      cell.innerHTML = `
+        <div class="top">
+          <div class="num">${d.getDate()}</div>
+          <span class="${typeBadgeClass(globalType)}" style="font-size:10px">${typeLabel(globalType)}</span>
+        </div>
+        <div class="kpi">
+          <div>Часы: <span style="color:var(--text);font-weight:800">${entry?.hours ?? 0}</span></div>
+          <div>Оплата: <span style="color:var(--text);font-weight:800">${money(pay)}</span></div>
+          ${entry?.type && entry.type!==globalType ? `<div class="small">Тип в записи: <span style="font-weight:800">${typeLabel(entry.type)}</span></div>` : ""}
+        </div>
+        ${selectedEmployeeId && (entry?.hours ?? 0) > 0 ? `<div class="dot"></div>` : ""}
+      `;
+
+      cell.addEventListener('click', ()=>openDayDialog(new Date(d)));
+      days.appendChild(cell);
+    }
+
+    wrap.appendChild(weekdays);
+    wrap.appendChild(days);
+
+    viewCalendar.innerHTML = "";
+    viewCalendar.appendChild(wrap);
+
+    // Update month range used in export
+    const mf = toISO(startOfMonth(monthCursor));
+    const mt = toISO(endOfMonth(monthCursor));
+
+    // Month summary tab content
+    renderSummaryMonth(mf, mt);
+  }
+
+  function openDayDialog(dateObj){
+    dayCursor = dateObj;
+    const iso = toISO(dayCursor);
+
+    const globalType = dayTypeForISO(iso);
+    dayGlobalSelect.value = globalType;
+    dayGlobalBadge.className = typeBadgeClass(globalType);
+    dayGlobalBadge.textContent = typeLabel(globalType);
+
+    const emp = selectedEmployee();
+    dayEmpName.textContent = emp?.name ?? "—";
+
+    const entry = selectedEmployeeId ? getEntry(selectedEmployeeId, iso) : null;
+    dayHoursEl.value = entry?.hours ?? 0;
+    dayEntrySelect.value = entry?.type ?? globalType;
+
+    dayModalTitle.textContent = formatRuDate(dayCursor) + (isToday(dayCursor) ? " (сегодня)" : "");
+
+    updatePayPreview();
+    openModal(modalDay);
+  }
+
+  function formatRuDate(d){
+    return new Intl.DateTimeFormat('ru-BY', { day:'numeric', month:'long', year:'numeric' }).format(d);
+  }
+
+  function updatePayPreview(){
+    const emp = selectedEmployee();
+    const rate = emp?.rate ?? 0;
+    const type = dayEntrySelect.value;
+    const h = clampNum(dayHoursEl.value,0,24);
+    const mult = clampNum(store.multipliers?.[type] ?? 1,0,100);
+    const pay = computePay(h, rate, type, store.multipliers);
+
+    prevRate.textContent = `${money(rate)}/ч`;
+    prevMult.textContent = `x${mult}`;
+    prevPay.textContent = money(pay);
+  }
+
+  function saveDay(){
+    const iso = toISO(dayCursor);
+    const globalType = dayGlobalSelect.value;
+    setDayOverride(iso, globalType);
+
+    if(selectedEmployeeId){
+      const h = clampNum(dayHoursEl.value,0,24);
+      if(h<=0){
+        upsertEntry(selectedEmployeeId, iso, null);
+      } else {
+        upsertEntry(selectedEmployeeId, iso, { hours:h, type: dayEntrySelect.value });
+      }
+    }
+
+    closeModal(modalDay);
+    renderAll();
+  }
+
+  // ----------------------------
+  // Table Entry Mode
+  // ----------------------------
+  function renderTableMode(){
+    const start = startOfMonth(monthCursor);
+    const end = endOfMonth(monthCursor);
+    const days=[];
+    for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)) days.push(new Date(d));
+
+    const wrap = document.createElement('div');
+    wrap.className = "tableWrap";
+
+    const scroll = document.createElement('div');
+    scroll.className = "scrollX";
+
+    const table = document.createElement('table');
+
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+
+    const th0 = document.createElement('th');
+    th0.textContent = "Сотрудник";
+    th0.style.minWidth = "240px";
+    trh.appendChild(th0);
+
+    for(const d of days){
+      const iso = toISO(d);
+      const gt = dayTypeForISO(iso);
+      const wd = new Intl.DateTimeFormat('ru-BY', { weekday:'short' }).format(d);
+
+      const th = document.createElement('th');
+      th.className = "thDay";
+      th.style.minWidth = "120px";
+
+      const btn = document.createElement('button');
+      btn.title = "Клик: сменить тип дня";
+      btn.addEventListener('click', ()=>{
+        const current = dayTypeForISO(iso);
+        const next = nextType(current);
+        setDayOverride(iso, next);
+        renderAll();
+      });
+
+      btn.innerHTML = `
+        <div class="thRow">
+          <div style="font-weight:850">${d.getDate()} <span class="mini">${escapeHtml(wd)}</span></div>
+          <span class="${typeBadgeClass(gt)}" style="font-size:10px">${typeShort(gt)}</span>
+        </div>
+      `;
+
+      th.appendChild(btn);
+      trh.appendChild(th);
+    }
+
+    thead.appendChild(trh);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+
+    for(const emp of store.employees){
+      const tr = document.createElement('tr');
+
+      const td0 = document.createElement('td');
+      td0.innerHTML = "";
+      const box = document.createElement('div');
+      box.style.display = "flex";
+      box.style.gap = "10px";
+      box.style.alignItems = "flex-start";
+      box.appendChild(renderAvatar(emp,false,36));
+      const txt = document.createElement('div');
+      txt.innerHTML = `<div style="font-weight:850;line-height:1.2">${escapeHtml(emp.name)}</div><div class="small">${escapeHtml(emp.role||'—')}</div><div class="small">${money(emp.rate)}/ч</div>`;
+      box.appendChild(txt);
+      td0.appendChild(box);
+      tr.appendChild(td0);
+
+      for(const d of days){
+        const iso = toISO(d);
+        const globalType = dayTypeForISO(iso);
+        const entry = store.entries?.[emp.id]?.[iso] ?? null;
+        const hours = entry?.hours ?? 0;
+        const type = entry?.type ?? globalType;
+        const pay = computePay(hours, emp.rate, type, store.multipliers);
+
+        const td = document.createElement('td');
+        const controls = document.createElement('div');
+        controls.className = "cellControls";
+
+        const inp = document.createElement('input');
+        inp.className = "input";
+        inp.style.height = "34px";
+        inp.type = "number";
+        inp.min = "0";
+        inp.max = "24";
+        inp.step = "0.5";
+        inp.value = hours;
+        inp.addEventListener('change', ()=>{
+          const h = clampNum(inp.value,0,24);
+          if(h<=0) upsertEntry(emp.id, iso, null);
+          else upsertEntry(emp.id, iso, { hours:h, type: sel.value });
+          renderAll();
+        });
+
+        const sel = document.createElement('select');
+        sel.className = "select";
+        sel.style.height = "34px";
+        sel.innerHTML = `
+          <option value="regular">Обычный</option>
+          <option value="weekend">Выходной</option>
+          <option value="holiday">Праздник</option>
+        `;
+        sel.value = type;
+        sel.addEventListener('change', ()=>{
+          const h = clampNum(inp.value,0,24);
+          if(h<=0) upsertEntry(emp.id, iso, null);
+          else upsertEntry(emp.id, iso, { hours:h, type: sel.value });
+          renderAll();
+        });
+
+        const info = document.createElement('div');
+        info.className = "small";
+        info.innerHTML = hours>0 ? `${money(pay)} <span class="small">(x${store.multipliers?.[type] ?? 1})</span>` : "—";
+
+        controls.appendChild(inp);
+        controls.appendChild(sel);
+        controls.appendChild(info);
+
+        td.appendChild(controls);
+        tr.appendChild(td);
+      }
+
+      tbody.appendChild(tr);
+    }
+
+    table.appendChild(tbody);
+    scroll.appendChild(table);
+    wrap.appendChild(scroll);
+
+    viewTable.innerHTML = "";
+    viewTable.appendChild(wrap);
+
+    const tip = document.createElement('div');
+    tip.className = "small";
+    tip.style.marginTop = "10px";
+    tip.textContent = "Подсказка: клик по заголовку дня циклично меняет тип дня (Обычный → Выходной → Праздник).";
+    viewTable.appendChild(tip);
+  }
+
+  // ----------------------------
+  // Summary rendering
+  // ----------------------------
+  function summaryBlockHTML(title, summary){
+    const rows = summary.rows;
+
+    let html = `
+      <div class="profileTop">
+        <div>
+          <div style="font-weight:850">${escapeHtml(title)}</div>
+          <div class="small">Всего к выплате: <span style="color:var(--text);font-weight:900">${money(summary.totalPay)}</span></div>
+        </div>
+        <div class="small">Часы всего: <span style="color:var(--text);font-weight:900">${summary.totalHours}</span></div>
+      </div>
+
+      <div class="tableWrap" style="margin-top:12px">
+        <table>
+          <thead>
+            <tr>
+              <th>Сотрудник</th>
+              <th style="text-align:right">Часы</th>
+              <th style="text-align:right">Оплата</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    if(rows.length===0){
+      html += `<tr><td colspan="3" class="small">Нет данных за период.</td></tr>`;
+    } else {
+      for(const r of rows){
+        html += `
+          <tr>
+            <td>
+              <div style="font-weight:850">${escapeHtml(r.employee.name)}</div>
+              <div class="small">${escapeHtml(r.employee.role||'—')}</div>
+            </td>
+            <td style="text-align:right">${r.hoursTotal}</td>
+            <td style="text-align:right; font-weight:900">${money(r.payTotal)}</td>
+          </tr>
+        `;
+      }
+    }
+
+    html += `
+          </tbody>
+        </table>
+      </div>
+
+      <div style="border:1px solid var(--line); border-radius:18px; padding:12px; margin-top:12px; background:rgba(0,0,0,.10)">
+        <div style="font-weight:850">Детализация (по типам дней)</div>
+        <div class="row three" style="margin-top:10px">
+          <div class="small">Обычные: <span style="color:var(--text);font-weight:900">${summary.byType.regular.hours} ч · ${money(summary.byType.regular.pay)}</span></div>
+          <div class="small">Выходные: <span style="color:var(--text);font-weight:900">${summary.byType.weekend.hours} ч · ${money(summary.byType.weekend.pay)}</span></div>
+          <div class="small">Праздники: <span style="color:var(--text);font-weight:900">${summary.byType.holiday.hours} ч · ${money(summary.byType.holiday.pay)}</span></div>
+        </div>
+      </div>
+    `;
+
+    return html;
+  }
+
+  function renderSummaryMonth(fromISO, toISO){
+    const s = computeSummaryForPeriod(fromISO, toISO);
+    sumMonth.innerHTML = summaryBlockHTML(`Период: ${fromISO} — ${toISO}`, s);
+
+    // also keep range inputs default aligned
+    rangeFromEl.value = rangeFrom;
+    rangeToEl.value = rangeTo;
+
+    renderRangeSummary();
+  }
+
+  function renderRangeSummary(){
+    const s = computeSummaryForPeriod(rangeFrom, rangeTo);
+    rangeSummaryBlock.innerHTML = summaryBlockHTML(`Период: ${rangeFrom} — ${rangeTo}`, s);
+  }
+
+  // ----------------------------
+  // Profile page
+  // ----------------------------
+  let profileMonthKey = null; // yyyy-MM
+  let profileTypeFilter = "all";
+  let profileFromISO = null;
+  let profileToISO = null;
+
+  function goProfile(empId){
+    profileEmployeeId = empId;
+    page = "profile";
+    showPage();
+    renderProfile();
+  }
+
+  function backToMain(){
+    page = "main";
+    showPage();
+    renderAll();
+  }
+
+  function showPage(){
+    pageMain.classList.toggle('hidden', page !== 'main');
+    pageProfile.classList.toggle('hidden', page !== 'profile');
+  }
+
+  function renderProfile(){
+    const emp = getEmployee(profileEmployeeId);
+    if(!emp){
+      profileCard.innerHTML = `<div class="small">Сотрудник не найден.</div>`;
+      profileHistory.innerHTML = `<div class="small">—</div>`;
+      profileFilters.innerHTML = `<div class="small">—</div>`;
+      profileDetails.innerHTML = `<div class="small">—</div>`;
+      return;
+    }
+
+    // Card
+    profileCard.innerHTML = "";
+    profileCard.appendChild(renderEmployeeProfileCard(emp));
+
+    // History by months
+    const hist = computeEmployeeMonthHistory(emp);
+    renderEmployeeHistory(hist);
+
+    // Filters
+    renderEmployeeFilters(emp, hist);
+
+    // Details table
+    renderEmployeeDetails(emp);
+  }
+
+  function renderEmployeeProfileCard(emp){
+    const card = document.createElement('div');
+    card.style.border = "1px solid var(--line)";
+    card.style.borderRadius = "18px";
+    card.style.padding = "12px";
+    card.style.background = "rgba(0,0,0,.10)";
+
+    const top = document.createElement('div');
+    top.style.display = "flex";
+    top.style.gap = "12px";
+    top.style.alignItems = "flex-start";
+
+    top.appendChild(renderAvatar(emp,false,64));
+
+    const meta = document.createElement('div');
+    meta.style.flex = "1";
+    meta.innerHTML = `
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+        <div>
+          <div style="font-weight:900;line-height:1.2">${escapeHtml(emp.name)}</div>
+          <div class="small">${escapeHtml(emp.role||'—')}</div>
+        </div>
+        <div class="pill"><span class="kbd">${money(emp.rate)}/ч</span></div>
+      </div>
+    `;
+
+    const lines = document.createElement('div');
+    lines.style.marginTop = "10px";
+    lines.style.display = "grid";
+    lines.style.gap = "8px";
+
+    lines.appendChild(lineItem("Телефон", emp.phone || "—"));
+    lines.appendChild(lineItem("Email", emp.email || "—"));
+    lines.appendChild(lineItem("Адрес", emp.address || "—"));
+    if(emp.notes){
+      const notes = document.createElement('div');
+      notes.style.borderRadius = "14px";
+      notes.style.background = "rgba(255,255,255,.05)";
+      notes.style.padding = "10px";
+      notes.innerHTML = `<div class="small">Заметки</div><div style="margin-top:6px; white-space:pre-wrap">${escapeHtml(emp.notes)}</div>`;
+      lines.appendChild(notes);
+    }
+
+    meta.appendChild(lines);
+    top.appendChild(meta);
+    card.appendChild(top);
+    return card;
+  }
+
+  function computeEmployeeMonthHistory(emp){
+    const map = store.entries?.[emp.id] ?? {};
+    const buckets = new Map(); // yyyy-MM -> {hours,pay,days}
+
+    for(const iso of Object.keys(map)){
+      const item = map[iso];
+      const hours = clampNum(item?.hours ?? 0, 0, 24);
+      if(hours<=0) continue;
+      const globalType = dayTypeForISO(iso);
+      const type = item?.type ?? globalType;
+      const pay = computePay(hours, emp.rate, type, store.multipliers);
+      const key = iso.slice(0,7);
+      const prev = buckets.get(key) || {hours:0,pay:0,days:0};
+      buckets.set(key, { hours: prev.hours + hours, pay: prev.pay + pay, days: prev.days + 1 });
+    }
+
+    const arr = Array.from(buckets.entries()).map(([key,v])=>{
+      const d=parseISODate(`${key}-01`);
+      return { key, label: monthLabel(d), hours: round1(v.hours), pay: round2(v.pay), days: v.days };
+    }).sort((a,b)=>a.key<b.key?1:-1);
+
+    // init default month filter
+    if(!profileMonthKey){
+      profileMonthKey = arr[0]?.key ?? formatMonthKey(new Date());
+    }
+    return arr;
+  }
+
+  function formatMonthKey(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`; }
+
+  function renderEmployeeHistory(hist){
+    if(hist.length===0){
+      profileHistory.innerHTML = `<div class="small">Нет записей часов.</div>`;
+      return;
+    }
+
+    let html = `
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Месяц</th>
+              <th style="text-align:right">Дней</th>
+              <th style="text-align:right">Часы</th>
+              <th style="text-align:right">Оплата</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    for(const m of hist.slice(0,18)){
+      html += `
+        <tr data-month="${m.key}" style="cursor:pointer">
+          <td style="font-weight:850">${escapeHtml(m.label)}</td>
+          <td style="text-align:right">${m.days}</td>
+          <td style="text-align:right">${m.hours}</td>
+          <td style="text-align:right; font-weight:900">${money(m.pay)}</td>
+        </tr>
+      `;
+    }
+
+    html += `</tbody></table></div><div class="small" style="margin-top:10px">Клик по месяцу — быстро применит фильтр.</div>`;
+    profileHistory.innerHTML = html;
+
+    // click handler
+    profileHistory.querySelectorAll('tr[data-month]').forEach(tr=>{
+      tr.addEventListener('click', ()=>{
+        const key = tr.getAttribute('data-month');
+        profileMonthKey = key;
+        profileTypeFilter = "all";
+        const d=parseISODate(`${key}-01`);
+        profileFromISO = toISO(startOfMonth(d));
+        profileToISO = toISO(endOfMonth(d));
+        renderProfile();
+      });
+    });
+  }
+
+  function renderEmployeeFilters(emp, hist){
+    const months = buildMonthOptionsForEmployee(emp);
+    if(!profileFromISO || !profileToISO){
+      const d=parseISODate(`${profileMonthKey}-01`);
+      profileFromISO = toISO(startOfMonth(d));
+      profileToISO = toISO(endOfMonth(d));
+    }
+
+    const options = months.map(m=>`<option value="${m.key}" ${m.key===profileMonthKey?"selected":""}>${escapeHtml(m.label)}</option>`).join('');
+
+    profileFilters.innerHTML = `
+      <div class="row three" style="align-items:end">
+        <div>
+          <div class="label">Месяц</div>
+          <select class="select" id="profMonthSel">${options}</select>
+        </div>
+        <div>
+          <div class="label">С даты</div>
+          <input class="input" type="date" id="profFrom" value="${escapeHtml(profileFromISO)}" />
+        </div>
+        <div>
+          <div class="label">По дату</div>
+          <input class="input" type="date" id="profTo" value="${escapeHtml(profileToISO)}" />
+        </div>
+      </div>
+
+      <div class="row three" style="align-items:end; margin-top:10px">
+        <div>
+          <div class="label">Тип</div>
+          <select class="select" id="profType">
+            <option value="all" ${profileTypeFilter==='all'?'selected':''}>Все</option>
+            <option value="regular" ${profileTypeFilter==='regular'?'selected':''}>Обычный</option>
+            <option value="weekend" ${profileTypeFilter==='weekend'?'selected':''}>Выходной</option>
+            <option value="holiday" ${profileTypeFilter==='holiday'?'selected':''}>Праздник</option>
+          </select>
+        </div>
+        <div>
+          <button class="btn secondary" id="profToMonth" style="width:100%">= Выбранный месяц</button>
+        </div>
+        <div>
+          <button class="btn secondary" id="profToday" style="width:100%">Сегодня</button>
+        </div>
+      </div>
+
+      <div style="border:1px solid var(--line); border-radius:18px; padding:12px; margin-top:12px; background:rgba(0,0,0,.10)" id="profTotals"></div>
+    `;
+
+    // wire controls
+    const monthSel = el('profMonthSel');
+    const from = el('profFrom');
+    const to = el('profTo');
+    const typeSel = el('profType');
+
+    monthSel.addEventListener('change', ()=>{
+      profileMonthKey = monthSel.value;
+      const d=parseISODate(`${profileMonthKey}-01`);
+      profileFromISO = toISO(startOfMonth(d));
+      profileToISO = toISO(endOfMonth(d));
+      renderProfile();
+    });
+
+    from.addEventListener('change', ()=>{ profileFromISO = from.value; renderProfile(); });
+    to.addEventListener('change', ()=>{ profileToISO = to.value; renderProfile(); });
+    typeSel.addEventListener('change', ()=>{ profileTypeFilter = typeSel.value; renderProfile(); });
+
+    el('profToMonth').addEventListener('click', ()=>{
+      const d=parseISODate(`${profileMonthKey}-01`);
+      profileFromISO = toISO(startOfMonth(d));
+      profileToISO = toISO(endOfMonth(d));
+      profileTypeFilter = "all";
+      renderProfile();
+    });
+
+    el('profToday').addEventListener('click', ()=>{
+      const now=new Date();
+      profileMonthKey = formatMonthKey(now);
+      profileFromISO = toISO(startOfMonth(now));
+      profileToISO = toISO(endOfMonth(now));
+      profileTypeFilter = "all";
+      renderProfile();
+    });
+
+    // totals
+    const totals = computeEmployeeFiltered(emp);
+    el('profTotals').innerHTML = `
+      <div class="profileTop">
+        <div>
+          <div style="font-weight:850">Итого за фильтр</div>
+          <div class="small">${escapeHtml(profileFromISO)} — ${escapeHtml(profileToISO)}</div>
+        </div>
+        <div class="small">Часы: <span style="color:var(--text);font-weight:900">${totals.totalHours}</span> · Оплата: <span style="color:var(--text);font-weight:900">${money(totals.totalPay)}</span></div>
+      </div>
+      <div class="row three" style="margin-top:10px">
+        <div class="small">Обычные: <span style="color:var(--text);font-weight:900">${totals.byType.regular.hours} ч · ${money(totals.byType.regular.pay)}</span></div>
+        <div class="small">Выходные: <span style="color:var(--text);font-weight:900">${totals.byType.weekend.hours} ч · ${money(totals.byType.weekend.pay)}</span></div>
+        <div class="small">Праздники: <span style="color:var(--text);font-weight:900">${totals.byType.holiday.hours} ч · ${money(totals.byType.holiday.pay)}</span></div>
+      </div>
+    `;
+  }
+
+  function buildMonthOptionsForEmployee(emp){
+    const map = store.entries?.[emp.id] ?? {};
+    const keys = Object.keys(map).sort();
+    if(keys.length===0){
+      const now=new Date();
+      const key=formatMonthKey(now);
+      return [{key, label: monthLabel(now)}];
+    }
+    const min=parseISODate(keys[0]);
+    const max=parseISODate(keys[keys.length-1]);
+    const list=[];
+    for(let d=startOfMonth(min); d<=startOfMonth(max); d=addMonths(d,1)){
+      list.push({ key: formatMonthKey(d), label: monthLabel(d) });
+    }
+    return list;
+  }
+
+  function computeEmployeeFiltered(emp){
+    const map = store.entries?.[emp.id] ?? {};
+    const from=safeISO(profileFromISO);
+    const to=safeISO(profileToISO);
+    if(!from||!to) return { rows:[], totalHours:0, totalPay:0, byType:{regular:{hours:0,pay:0},weekend:{hours:0,pay:0},holiday:{hours:0,pay:0}} };
+
+    const A=parseISODate(from);
+    const B=parseISODate(to);
+    const start=A<=B?A:B;
+    const end=A<=B?B:A;
+
+    const byType={regular:{hours:0,pay:0},weekend:{hours:0,pay:0},holiday:{hours:0,pay:0}};
+    const rows=[];
+
+    for(const iso of Object.keys(map)){
+      const d=parseISODate(iso);
+      if(d<start||d>end) continue;
+      const item=map[iso];
+      const hours=clampNum(item?.hours??0,0,24);
+      if(hours<=0) continue;
+
+      const globalType=dayTypeForISO(iso);
+      const type=item?.type ?? globalType;
+      if(profileTypeFilter !== 'all' && type !== profileTypeFilter) continue;
+
+      const pay = computePay(hours, emp.rate, type, store.multipliers);
+      byType[type].hours += hours;
+      byType[type].pay += pay;
+
+      rows.push({ iso, date:d, weekday: new Intl.DateTimeFormat('ru-BY',{weekday:'short'}).format(d), hours, type, pay, globalType });
+    }
+
+    rows.sort((a,b)=>a.iso<b.iso?-1:1);
+
+    return {
+      rows,
+      totalHours: round1(rows.reduce((s,r)=>s+r.hours,0)),
+      totalPay: round2(rows.reduce((s,r)=>s+r.pay,0)),
+      byType: {
+        regular:{ hours: round1(byType.regular.hours), pay: round2(byType.regular.pay) },
+        weekend:{ hours: round1(byType.weekend.hours), pay: round2(byType.weekend.pay) },
+        holiday:{ hours: round1(byType.holiday.hours), pay: round2(byType.holiday.pay) },
+      }
+    };
+  }
+
+  function renderEmployeeDetails(emp){
+    const data = computeEmployeeFiltered(emp);
+
+    let html = `
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Тип</th>
+              <th style="text-align:right">Часы</th>
+              <th style="text-align:right">Оплата</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    if(data.rows.length===0){
+      html += `<tr><td colspan="4" class="small">Нет записей по текущему фильтру.</td></tr>`;
+    } else {
+      for(const r of data.rows){
+        html += `
+          <tr>
+            <td>
+              <div style="font-weight:850">${escapeHtml(r.iso)}</div>
+              <div class="small">${escapeHtml(r.weekday)}</div>
+            </td>
+            <td>
+              <span class="${typeBadgeClass(r.type)}">${typeLabel(r.type)}</span>
+              ${r.globalType !== r.type ? `<div class="small" style="margin-top:6px">Общий: ${typeLabel(r.globalType)}</div>` : ``}
+            </td>
+            <td style="text-align:right">${round1(r.hours)}</td>
+            <td style="text-align:right; font-weight:900">${money(r.pay)}</td>
+          </tr>
+        `;
+      }
+    }
+
+    html += `</tbody></table></div>`;
+    profileDetails.innerHTML = html;
+  }
+
+  // ----------------------------
+  // Excel export (period/month)
+  // ----------------------------
+  function exportToExcel(fromISO, toISO, fileLabel){
+    const from=safeISO(fromISO); const to=safeISO(toISO);
+    if(!from||!to) return;
+
+    const A=parseISODate(from); const B=parseISODate(to);
+    const start=A<=B?A:B; const end=A<=B?B:A;
+
+    const detail = [[
+      "Дата","День недели","Тип дня (общий)","Сотрудник","Должность","Ставка (BYN/ч)","Часы","Тип (в записи)","Множитель","Оплата (BYN)"
+    ]];
+
+    const employeesSorted=[...store.employees].sort((x,y)=>(x.name||"").localeCompare(y.name||"","ru"));
+
+    for(const emp of employeesSorted){
+      const map=store.entries?.[emp.id] ?? {};
+      const dates=Object.keys(map).filter(iso=>{
+        const d=parseISODate(iso);
+        return d>=start && d<=end;
+      }).sort();
+
+      for(const iso of dates){
+        const globalType=dayTypeForISO(iso);
+        const item=map[iso];
+        const hours=clampNum(item?.hours??0,0,24);
+        const type=item?.type ?? globalType;
+        const mult=clampNum(store.multipliers?.[type] ?? 1,0,100);
+        const pay=computePay(hours, emp.rate, type, store.multipliers);
+        const d=parseISODate(iso);
+        const weekday=new Intl.DateTimeFormat('ru-BY',{weekday:'short'}).format(d);
+
+        detail.push([iso, weekday, typeLabel(globalType), emp.name, emp.role||"", emp.rate, hours, typeLabel(type), mult, round2(pay)]);
+      }
+    }
+
+    const summary = [["Период", `${fromISO} — ${toISO}`],["Всего к выплате (BYN)", ""],[]];
+    const sum = computeSummaryForPeriod(fromISO,toISO);
+    summary[1][1] = round2(sum.totalPay);
+    summary.push(["Сотрудник","Должность","Ставка (BYN/ч)","Часы","Оплата (BYN)"]);
+    for(const r of sum.rows){ summary.push([r.employee.name, r.employee.role||"", r.employee.rate, r.hoursTotal, r.payTotal]); }
+
+    const employeesSheet=[["Сотрудники"],[],["Имя","Должность","Ставка (BYN/ч)","Телефон","Email","Адрес","Заметки"]];
+    for(const e of employeesSorted){ employeesSheet.push([e.name||"",e.role||"",e.rate??0,e.phone||"",e.email||"",e.address||"",e.notes||""]); }
+
+    const settings=[["Настройки"],[],["Множители"],["Обычный",store.multipliers.regular],["Выходной",store.multipliers.weekend],["Праздник",store.multipliers.holiday]];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), "Сводка");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detail), "Записи");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(employeesSheet), "Сотрудники");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(settings), "Настройки");
+
+    const safe = String(fileLabel||"period").replace(/[^a-zA-Z0-9_-]+/g,'-');
+    const filename = `hours-payroll_${safe}_${fromISO}_to_${toISO}.xlsx`;
+    XLSX.writeFile(wb, filename);
+  }
+
+  // ----------------------------
+  // Global render
+  // ----------------------------
+  function renderAll(){
+    renderEmployees();
+
+    // multipliers
+    multRegular.value = store.multipliers.regular;
+    multWeekend.value = store.multipliers.weekend;
+    multHoliday.value = store.multipliers.holiday;
+
+    renderCalendar();
+    renderTableMode();
+
+    // range
+    rangeFromEl.value = rangeFrom;
+    rangeToEl.value = rangeTo;
+    renderRangeSummary();
+  }
+
+  // ----------------------------
+  // Tabs
+  // ----------------------------
+  function setView(mode){
+    viewMode = mode;
+    tabCalendar.classList.toggle('active', mode==='calendar');
+    tabTable.classList.toggle('active', mode==='table');
+    viewCalendar.classList.toggle('hidden', mode!=='calendar');
+    viewTable.classList.toggle('hidden', mode!=='table');
+  }
+
+  function setSummaryTab(mode){
+    tabSumMonth.classList.toggle('active', mode==='month');
+    tabSumRange.classList.toggle('active', mode==='range');
+    sumMonth.classList.toggle('hidden', mode!=='month');
+    sumRange.classList.toggle('hidden', mode!=='range');
+  }
+
+  // ----------------------------
+  // Wire events
+  // ----------------------------
+  el('btnPrevMonth').addEventListener('click', ()=>{ monthCursor = addMonths(monthCursor,-1); renderAll(); });
+  el('btnToday').addEventListener('click', ()=>{ monthCursor = startOfMonth(new Date()); renderAll(); });
+  el('btnNextMonth').addEventListener('click', ()=>{ monthCursor = addMonths(monthCursor, 1); renderAll(); });
+  el('btnAddEmployee').addEventListener('click', openAddEmployee);
+
+  tabCalendar.addEventListener('click', ()=>setView('calendar'));
+  tabTable.addEventListener('click', ()=>setView('table'));
+
+  tabSumMonth.addEventListener('click', ()=>setSummaryTab('month'));
+  tabSumRange.addEventListener('click', ()=>setSummaryTab('range'));
+
+  // multipliers
+  multRegular.addEventListener('change', ()=>{ store.multipliers.regular = clampNum(multRegular.value,0,100); saveStore(); renderAll(); });
+  multWeekend.addEventListener('change', ()=>{ store.multipliers.weekend = clampNum(multWeekend.value,0,100); saveStore(); renderAll(); });
+  multHoliday.addEventListener('change', ()=>{ store.multipliers.holiday = clampNum(multHoliday.value,0,100); saveStore(); renderAll(); });
+
+  // range inputs
+  rangeFromEl.addEventListener('change', ()=>{ rangeFrom = rangeFromEl.value; renderRangeSummary(); });
+  rangeToEl.addEventListener('change', ()=>{ rangeTo = rangeToEl.value; renderRangeSummary(); });
+  el('btnRangeToMonth').addEventListener('click', ()=>{
+    rangeFrom = toISO(startOfMonth(monthCursor));
+    rangeTo = toISO(endOfMonth(monthCursor));
+    rangeFromEl.value = rangeFrom;
+    rangeToEl.value = rangeTo;
+    renderRangeSummary();
+  });
+
+  // exports
+  el('btnExportMonth').addEventListener('click', ()=>{
+    exportToExcel(toISO(startOfMonth(monthCursor)), toISO(endOfMonth(monthCursor)), 'month');
+  });
+  el('btnExportRange').addEventListener('click', ()=>{
+    exportToExcel(rangeFrom, rangeTo, 'range');
+  });
+
+  // employee modal buttons
+  el('btnEmpCancel').addEventListener('click', ()=>closeModal(modalEmployee));
+  el('btnEmpSave').addEventListener('click', saveEmployee);
+  el('btnPickPhoto').addEventListener('click', ()=>empPhotoFile.click());
+  el('btnRemovePhoto').addEventListener('click', ()=>{ empDraft.photoDataUrl=''; setEmpPhotoPreview(empDraft); });
+  empPhotoFile.addEventListener('change', ()=>handlePhotoFile(empPhotoFile.files?.[0]||null));
+  empName.addEventListener('input', ()=>{ empDraft.name = empName.value; setEmpPhotoPreview(empDraft); });
+
+  // day modal
+  el('btnDayCancel').addEventListener('click', ()=>closeModal(modalDay));
+  el('btnDaySave').addEventListener('click', saveDay);
+  dayGlobalSelect.addEventListener('change', ()=>{
+    dayGlobalBadge.className = typeBadgeClass(dayGlobalSelect.value);
+    dayGlobalBadge.textContent = typeLabel(dayGlobalSelect.value);
+    // default entry type to global if it was same before
+    updatePayPreview();
+  });
+  dayHoursEl.addEventListener('input', updatePayPreview);
+  dayEntrySelect.addEventListener('change', updatePayPreview);
+
+  // profile nav
+  btnBack.addEventListener('click', backToMain);
+  btnEditFromProfile.addEventListener('click', ()=>{
+    const emp=getEmployee(profileEmployeeId);
+    if(emp) openEditEmployee(emp);
+  });
+
+  // When employee modal closes, keep profile in sync
+  const observer = new MutationObserver(()=>{
+    if(!modalEmployee.classList.contains('open')){
+      if(page==='profile') renderProfile();
+    }
+  });
+  observer.observe(modalEmployee, { attributes:true, attributeFilter:['class'] });
+
+  // initial tabs
+  setView('calendar');
+  setSummaryTab('month');
+
+  // first render
+  renderAll();
+
+  // ----------------------------
+  // Small QoL: prevent accidental pull-to-refresh in iOS PWA
+  // ----------------------------
+  let startY=0;
+  document.addEventListener('touchstart', (e)=>{ startY = e.touches?.[0]?.clientY ?? 0; }, {passive:true});
+  document.addEventListener('touchmove', (e)=>{
+    const y = e.touches?.[0]?.clientY ?? 0;
+    const atTop = window.scrollY === 0;
+    if(atTop && y > startY + 10){
+      // allow normal scroll inside modals
+      if(modalEmployee.classList.contains('open') || modalDay.classList.contains('open')) return;
+      e.preventDefault();
+    }
+  }, {passive:false});
+</script>
+</body>
+</html>
