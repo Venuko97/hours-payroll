@@ -376,8 +376,9 @@
         </section>
       </main>
 
-      <footer class="mt-8 text-xs text-zinc-500">
-        Надёжная «single-file» версия (без npm). Для синхронизации между устройствами нужен сервер (можно добавить позже).
+      <footer class="mt-8 text-xs text-zinc-500 flex flex-wrap items-center justify-between gap-2">
+        <div>Надёжная «single-file» версия (без npm). Для синхронизации между устройствами нужен сервер (можно добавить позже).</div>
+        <div id="jsStatus" class="rounded-xl border border-zinc-200 bg-white px-2 py-1">JS: loading…</div>
       </footer>
     </div>
 
@@ -467,6 +468,30 @@
 
       // Флажок, что JS запустился (для диагностики)
       document.documentElement.dataset.js = "ok";
+      // Видимый индикатор, что JS реально запустился
+      (function(){
+        const el = document.getElementById("jsStatus");
+        if (el) el.textContent = "JS: OK";
+      })();
+
+      // Debug-режим: добавь в конец ссылки #debug, чтобы видеть клики
+      if (location.hash === "#debug") {
+        const toast = document.createElement("div");
+        toast.className = "fixed top-3 left-3 z-[9999] rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm shadow-soft hidden";
+        document.body.appendChild(toast);
+        document.addEventListener(
+          "click",
+          (e) => {
+            const t = e.target;
+            const label = (t?.tagName || "?") + (t?.id ? "#" + t.id : "") + (t?.dataset?.tab ? "[tab=" + t.dataset.tab + "]" : "");
+            toast.textContent = "click: " + label;
+            toast.classList.remove("hidden");
+            clearTimeout(toast.__t);
+            toast.__t = setTimeout(() => toast.classList.add("hidden"), 900);
+          },
+          true
+        );
+      }
 
 
       const EQUIPMENT = [
