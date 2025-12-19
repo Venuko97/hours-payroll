@@ -423,6 +423,52 @@
 
       const STORAGE_KEY = "sport_coach_singlefile_v2";
 
+      // Безопасное хранилище: если localStorage запрещён (часто на iPhone/Private), приложение всё равно работает.
+      const storage = (() => {
+        try {
+          const t = "__sc_test__";
+          window.localStorage.setItem(t, "1");
+          window.localStorage.removeItem(t);
+          return window.localStorage;
+        } catch (e) {
+          const mem = {};
+          return {
+            getItem: (k) => (k in mem ? mem[k] : null),
+            setItem: (k, v) => {
+              mem[k] = String(v);
+            },
+            removeItem: (k) => {
+              delete mem[k];
+            },
+          };
+        }
+      })();
+
+      // Показ ошибок прямо на странице (чтобы не было «кнопки мёртвые» из‑за скрытого краша)
+      function showErrorBanner(msg) {
+        try {
+          let el = document.getElementById("__errBanner");
+          if (!el) {
+            el = document.createElement("div");
+            el.id = "__errBanner";
+            el.className = "fixed left-3 right-3 bottom-3 z-[9999] rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 shadow-soft";
+            document.body.appendChild(el);
+          }
+          el.innerHTML = `<div class="font-semibold">Ошибка в скрипте</div><div class="mt-1 whitespace-pre-wrap">${escapeHtml(msg)}</div>`;
+        } catch {}
+      }
+
+      window.addEventListener("error", (e) => {
+        showErrorBanner(e?.message || String(e));
+      });
+      window.addEventListener("unhandledrejection", (e) => {
+        showErrorBanner(e?.reason?.message || String(e?.reason || e));
+      });
+
+      // Флажок, что JS запустился (для диагностики)
+      document.documentElement.dataset.js = "ok";
+
+
       const EQUIPMENT = [
         { id: "none", label: "Без" },
         { id: "dumbbells", label: "Гантели" },
@@ -555,7 +601,7 @@
 
       function loadState() {
         try {
-          const raw = localStorage.getItem(STORAGE_KEY);
+          const raw = storage.getItem(STORAGE_KEY);
           if (!raw) throw new Error("no state");
           const s = JSON.parse(raw);
           if (!s || !s.currentProfileId || !s.profiles) throw new Error("bad shape");
@@ -564,14 +610,14 @@
           const id = uid();
           const p = makeDefaultProfile("Профиль 1");
           const s = { currentProfileId: id, profiles: { [id]: p } };
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+          storage.setItem(STORAGE_KEY, JSON.stringify(s));
           return s;
         }
       }
 
       let state = loadState();
       function saveState() {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        storage.setItem(STORAGE_KEY, JSON.stringify(state));
       }
       function currentProfile() {
         return state.profiles[state.currentProfileId];
